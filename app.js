@@ -164,7 +164,7 @@ function teardown() {
 async function loadAll() {
   const since = new Date(now() - 7 * DAY).toISOString();
   const [p, c, r, pr, w, n] = await Promise.all([
-    db.from('people').select('id, name, is_admin, active'),
+    db.from('people').select('id, name, is_admin, active, hidden'),
     db.from('chargers').select('id, name').order('id'),
     db.from('reservations').select('*').or(`ends_at.gte.${since},status.in.(reserved,charging)`).order('starts_at'),
     db.from('prefs').select('*').maybeSingle(),
@@ -173,7 +173,8 @@ async function loadAll() {
   ]);
   for (const x of [p, c, r, pr, w, n]) if (x.error) throw new Error(x.error.message);
   people = new Map(p.data.map(x => [x.id, { ...x, name: esc(x.name) }]));
-  USERS = p.data.filter(x => x.active).map(x => esc(x.name)).sort((a, b) => a.localeCompare(b, 'de'));
+  // Versteckte Personen (z. B. Betreuer der App) erscheinen in keiner Liste
+  USERS = p.data.filter(x => x.active && !x.hidden).map(x => esc(x.name)).sort((a, b) => a.localeCompare(b, 'de'));
   CHARGERS = c.data.map(x => x.id);
   document.documentElement.style.setProperty('--cols', CHARGERS.length);
   res = r.data.map(norm).filter(x => !pendingIds.has(x.id)).concat(res.filter(x => pendingIds.has(x.id)));
@@ -444,6 +445,7 @@ function viewSettings() {
       <input type="checkbox" role="switch" class="switch" id="p-${k}" data-pref="${k}" ${prefs[k] ? 'checked' : ''}></label>`).join('')}
     <div class="note"><b>iPhone:</b> Push-Nachrichten funktionieren nur, wenn die App in Safari über „Teilen → Zum Home-Bildschirm“ hinzugefügt wurde. Auf Android geht es direkt in Chrome.</div>
     <button class="btn" data-act="onboard">Einrichtung erneut starten</button>
+    <button class="btn" data-act="help">Kurzanleitung</button>
 
     <h2 class="section-h" style="margin-top:16px">Personen</h2>
     ${isAdmin ? '<p class="muted">Du bist Admin. Du kannst Personen hinzufügen, ändern und entfernen. Neue Personen melden sich mit der hier eingetragenen E-Mail-Adresse an.</p>'
@@ -629,6 +631,49 @@ function drawOnboard() {
     ${dots}<div class="actions"><button class="btn" data-act="obDone">Später</button><button class="btn primary grow" data-act="obAllow">Push-Nachrichten erlauben</button></div>`);
 }
 
+// ---- Kurzanleitung (Knopf "?" oben) ----
+function openHelp() {
+  const admins = [...people.values()].filter(p => p.active && p.is_admin && !p.hidden).map(p => p.name).join(' oder ') || 'der Admin';
+  sheet(`<div class="help" style="display:flex;flex-direction:column;gap:12px">
+    <h3>So geht's</h3>
+    <h4>Laden</h4>
+    <ol>
+      <li>Bei einer freien Säule <b>Jetzt laden</b> tippen, Dauer wählen, <b>Laden starten</b>.</li>
+      <li>Akku voll, aber du kannst noch nicht umparken? <b>Geladen, Auto steht noch</b>. Die Säule wird gelb.</li>
+      <li>Weggefahren? <b>Säule freigeben</b>. So wissen alle sofort Bescheid.</li>
+    </ol>
+    <p>Hast du reserviert, tippst du beim Einstecken <b>Ich lade jetzt</b>.</p>
+    <h4>Reservieren</h4>
+    <ol>
+      <li><b>Reservieren</b> tippen oder im <b>Zeitplan</b> auf eine freie Stelle.</li>
+      <li>Säule, Tag und Uhrzeit wählen. Jede Woche gleich? Bei <b>Wiederholen</b> „Jede Woche“.</li>
+      <li>Ändern oder stornieren unter <b>Meine</b>.</li>
+    </ol>
+    <h4>Vier Regeln</h4>
+    <ul>
+      <li><b>15 Minuten:</b> Wer reserviert hat, bestätigt innerhalb von 15 Minuten mit „Ich lade jetzt“. Sonst verfällt die Reservierung.</li>
+      <li><b>Notfall:</b> Reserviert, aber niemand steckt? Dann darfst du <b>Trotzdem laden</b>. Die andere Person bekommt Bescheid.</li>
+      <li><b>Pünktlich:</b> Hat danach jemand reserviert, bist du bis dahin fertig.</li>
+      <li><b>Freigeben:</b> Nach dem Laden freigeben und umparken.</li>
+    </ul>
+    <h4>Farben</h4>
+    <div class="swatches">
+      <i style="background:var(--free)"></i><span>frei</span>
+      <i style="background:var(--busy)"></i><span>lädt</span>
+      <i style="background:var(--wait)"></i><span>fertig geladen, Auto steht noch</span>
+      <i style="background:var(--res)"></i><span>reserviert oder wartet auf Einstecken</span>
+    </div>
+    <h4>Gut zu wissen</h4>
+    <ul>
+      <li>Alles belegt? <b>Sag mir Bescheid</b>, dann kommt eine Nachricht, sobald eine Säule frei wird.</li>
+      <li>Vertippt? Nach Freigeben oder Stornieren 5 Sekunden lang <b>Rückgängig</b>.</li>
+      <li>Welche Push-Nachrichten du bekommst, stellst du unter <b>Einstellungen</b> ein. Sie kommen auch bei geschlossener App.</li>
+      <li>Fragen, neue Kollegen oder Passwort vergessen? ${admins} hilft weiter.</li>
+    </ul>
+    <button class="btn primary" data-act="close">Alles klar</button>
+  </div>`);
+}
+
 // ---- Personen bearbeiten (Admin) ----
 let editPid = null;
 function openUserEdit(pid) {
@@ -732,6 +777,7 @@ document.addEventListener('click', async e => {
       }
       case 'allowPush': if (await enablePush()) render(); break;
       case 'onboard': openOnboard(); break;
+      case 'help': openHelp(); break;
       case 'obDev': ob.device = el.dataset.v; drawOnboard(); break;
       case 'obNext': ob.step++; drawOnboard(); break;
       case 'obBack': ob.step--; drawOnboard(); break;

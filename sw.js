@@ -1,6 +1,6 @@
 // Ladeplan: Service Worker. Zeigt Push-Nachrichten an und hält die App-Dateien für den Offline-Start bereit.
 // Bei jeder Änderung an den App-Dateien VERSION hochzählen, damit Handys die neue Version laden.
-const VERSION = 'ladeplan-v1';
+const VERSION = 'ladeplan-v3';
 const FILES = ['./', 'index.html', 'style.css', 'app.js', 'config.js', 'dtg-logo.png', 'manifest.webmanifest', 'icons/icon-192.png'];
 
 self.addEventListener('install', e => {

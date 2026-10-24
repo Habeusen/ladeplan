@@ -65,6 +65,14 @@ p{margin:0}
 .hello{color:var(--muted);font-size:15px;font-weight:500;margin-top:6px}
 .bell{position:relative;flex:none;width:44px;height:44px;border-radius:50%;border:0;background:var(--surface);box-shadow:var(--shadow);display:grid;place-items:center}
 .bell svg{width:20px;height:20px}
+.top-actions{display:flex;gap:8px}
+
+/* Kurzanleitung */
+.help h4{margin:4px 0 0;font-size:16px;font-weight:800}
+.help ol,.help ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.help p{color:var(--muted);font-size:14px}
+.help .swatches{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center;font-size:14px}
+.help .swatches i{width:14px;height:14px;border-radius:50%}
 .bell .n{position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--busy);color:var(--surface);font-size:11px;font-weight:700;display:grid;place-items:center}
 
 .offline{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:16px;background:var(--sunken);font-size:14px}
