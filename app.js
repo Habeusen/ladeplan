@@ -487,6 +487,9 @@ function sheet(html) {
 }
 const closeSheet = () => { $('#sheetRoot').innerHTML = ''; };
 
+// Nächster 18-Uhr-Zeitpunkt; dann beendet die Datenbank alle laufenden Ladungen (update-03-18-uhr.sql)
+const next18 = t => { const d = new Date(t); d.setHours(18, 0, 0, 0); if (d.getTime() <= t) d.setDate(d.getDate() + 1); return d.getTime(); };
+
 let chargeDraft = null;
 function openCharge(c) {
   const n = now(), s = state(c);
@@ -505,6 +508,7 @@ function drawCharge() {
   const tooShort = cap && cap - n < 15 * MIN;
   sheet(`<h3>Ladesäule ${c}: jetzt laden</h3>
     ${override ? `<div class="callout wait"><b>${override.user}</b> hat ab ${fmt(override.start)} reserviert, aber noch nicht eingesteckt. Wenn du lädst, wird die Reservierung überschrieben und ${override.user} bekommt eine Push-Nachricht.</div>` : ''}
+    ${!tooShort && n + len > next18(n) ? `<div class="callout info">Um <b class="mono">18:00</b> wird jede laufende Ladung automatisch beendet und die Säule als frei angezeigt.</div>` : ''}
     ${cap ? `<div class="callout info">${who(futureR.user)} ${futureR.user === me ? 'hast' : 'hat'} ab <b class="mono">${when(cap)}</b> reserviert. Bis dahin musst du fertig sein.</div>` : ''}
     ${tooShort ? `<div class="callout err">Bis zur nächsten Reservierung sind es nur ${dur(cap - n)}. Laden ist gerade nicht möglich.</div>` : `
     <div class="field">Wie lange ungefähr?<div class="chips">${chips}</div></div>
@@ -649,12 +653,13 @@ function openHelp() {
       <li>Säule, Tag und Uhrzeit wählen. Jede Woche gleich? Bei <b>Wiederholen</b> „Jede Woche“.</li>
       <li>Ändern oder stornieren unter <b>Meine</b>.</li>
     </ol>
-    <h4>Vier Regeln</h4>
+    <h4>Fünf Regeln</h4>
     <ul>
       <li><b>15 Minuten:</b> Wer reserviert hat, bestätigt innerhalb von 15 Minuten mit „Ich lade jetzt“. Sonst verfällt die Reservierung.</li>
       <li><b>Notfall:</b> Reserviert, aber niemand steckt? Dann darfst du <b>Trotzdem laden</b>. Die andere Person bekommt Bescheid.</li>
       <li><b>Pünktlich:</b> Hat danach jemand reserviert, bist du bis dahin fertig.</li>
       <li><b>Freigeben:</b> Nach dem Laden freigeben und umparken.</li>
+      <li><b>18 Uhr:</b> Um 18 Uhr werden alle laufenden Ladungen automatisch beendet und die Säulen als frei angezeigt.</li>
     </ul>
     <h4>Farben</h4>
     <div class="swatches">
